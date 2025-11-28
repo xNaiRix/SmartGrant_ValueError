@@ -34,7 +34,7 @@ def init_database():
 
         #Companies
         cursor.execute(cursor.execute('''
-            CREATE TABLE IF NOT EXISTS Scientists (
+            CREATE TABLE IF NOT EXISTS Companies (
             email TEXT PRIMARY KEY,
             password TEXT NOT NULL,
             name TEXT NOT NULL,
