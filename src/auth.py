@@ -5,7 +5,7 @@ import jwt  # PyJWT
 
 from passlib.context import CryptContext
 
-from schemes import UserCreate, CreateCompany, CreateScientist, LoginRequest
+from schemes import UserCreate, CreateCompany, CreateScientist, LoginRequest, UserProfileRequest
 from database import getItem, createItem
 
 SECRET_KEY = None
@@ -35,7 +35,7 @@ def create_token(login: str, role: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
     #datetime -> timestamp (число)
     payload = {
-        "sub": login,
+        "email": login,
         "role": role,
         "exp": expire.timestamp(),
         "iat": datetime.now(timezone.utc).timestamp()
@@ -62,11 +62,16 @@ def decode_token(token):
 
 async def get_current_user(authorization = Header(None, alias="Authorization")) -> Dict:
     if not authorization:
-        return {"role": None}#role = company/scientist
+        return {"role": None, "email":None}#role = company/scientist
     if not authorization.startswith("Bearer "):
-        return {"role": None}
+        return {"role": None, "email":None}
     token = authorization.replace("Bearer ", "")
     return decode_token(token)
+
+async def verify_role(user: Dict, allowed: List) -> bool:
+    if not user.get("role"):
+        return False
+    return user["role"] in allowed
 
 
 def hash_password(password: str) -> str:
@@ -81,8 +86,8 @@ async def validate_password(passwd) -> bool:
 
 async def _reg(tableName:Literal["Scientists", "Companies"], user:UserCreate)->Dict:
     try:
-        print(user.role)
-        user_in_db = getItem(tableName=tableName, id=user.data.email)
+        #print(user.role)
+        user_in_db = await getItem(tableName=tableName, id=user.data.email)
         if not user_in_db:
             if not await validate_password(passwd=user.data.password):
                 return {
@@ -92,7 +97,7 @@ async def _reg(tableName:Literal["Scientists", "Companies"], user:UserCreate)->D
             
             hashed_password = hash_password(user.data.password)
             user.data.password = hashed_password
-            if not createItem(tableName="Scientists", item=user.data):
+            if not (await createItem(tableName="Scientists", item=user.data)):
                 return {"status": "failed", "message": "DB Error"}
             return {"status": "success", "message": "Registration was successful"}
         return {
@@ -113,7 +118,7 @@ async def reg(user: UserCreate) -> Dict:
 
 async def _login_user(tableName:Literal["Scientists", "Companies"],  user: LoginRequest) -> Dict:
     
-    user_in_db = getItem(tableName=tableName, id=user.email)
+    user_in_db = await getItem(tableName=tableName, id=user.email)
     print(f"Login attempt for user: {user.email}")
     print(f"User found in DB: {user_in_db is not None}")
     if not user_in_db:
@@ -136,4 +141,18 @@ async def _login_user(tableName:Literal["Scientists", "Companies"],  user: Login
 async def login_user(user: LoginRequest)->Dict:
     if user.role == "scientist":
         return await _login_user("Scientists", user)
-    return await _login_user("Companies", user)
+    if user.role == "company":
+        return await _login_user("Companies", user)
+    return {"status":"failed", "message":"unexcepted json"}
+
+async def get_current_user_profile(user: Dict):
+    try:
+        if user["role"] == "scientist":
+            t = await getItem("Scientists", id = user["email"])
+        elif user["role"] == "company":
+            t = await getItem("Companies", id = user["email"])
+        t["role"] = user["role"]
+        return t
+    except Exception as e:
+        return {"status":"failed", "message":"Internal problem"}
+    

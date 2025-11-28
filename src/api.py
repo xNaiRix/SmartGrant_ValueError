@@ -9,6 +9,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import auth
+import projectsHandler
+import grantOffersHandler
+
 SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key_change_me")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
@@ -25,7 +28,7 @@ auth.setValues(
 )
 
 from database import deleteItem, updateItem, getTable
-from schemes import LoginRequest, UserCreate
+from schemes import LoginRequest, UserCreate, CreateProjectRequest
 
 app = FastAPI(title="SmartGrunt API", version="1.0.0")
 
@@ -38,6 +41,7 @@ app.add_middleware(
 )
 @app.get("/")
 async def root():
+    #print(auth.hash_password("123456789Aa"))
     return {"message": "SmartGrunt API is running", "version": "1.0.0", "docs": "/docs"}
 
 @app.options("/{path:path}")
@@ -45,7 +49,7 @@ async def options_handler(path: str):
     return {"message": "OK"}
 
 
-################################
+################################ auth
 @app.post("/auth/login")
 async def login(login_data: LoginRequest):
     try:
@@ -67,4 +71,52 @@ async def create_user(user_data: UserCreate):
     except Exception as e:
         print(f"Registration error: {e}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+@app.get("/auth/profile")
+async def get_current_user_profile(user:Dict = Depends(auth.get_current_user)):
+    return await auth.get_current_user_profile(user)
+
+
+##########################grantOffers
+@app.post("/requests/grants/")
+async def create_grant(grant_offer:CreateProjectRequest, user:Dict = Depends(auth.get_current_user)):
+    if not await auth.verify_role(user=user, allowed = ["company"]):
+        raise HTTPException(status_code=403, detail="Not enough rights")
+    return await grantOffersHandler.create_grant_offer(company_email=user["email"])
+
+@app.delete("/requests/grants/{grant_id}")
+async def delete_grant(grant_id:int, user:Dict = Depends(auth.get_current_user)):
+    if not await auth.verify_role(user=user, allowed = ["company"]):
+        raise HTTPException(status_code=403, detail="Not enough rights")
+    return await grantOffersHandler.delete_grant_offer(grant_offer_id=grant_id)
+
+@app.get("/requests/grants/{grant_id}")
+async def get_grant(grant_id:int):
+    return await grantOffersHandler.get_grant_offer(grant_offer_id=grant_id)
+
+@app.get("/requests/grants/list")
+async def get_grants(skip:int=0, limit:int=10):
+    return await grantOffersHandler.get_grant_offer(skip=skip, limit=limit)
+
+
+###########################projects
+@app.post("/requests/projects/")
+async def create_project(project:CreateProjectRequest, user:Dict = Depends(auth.get_current_user)):
+    if not await auth.verify_role(user=user, allowed = ["scientist"]):
+        raise HTTPException(status_code=403, detail="Not enough rights")
+    return await projectsHandler.create_project(scientist_email=user["email"], project=project)
+
+@app.delete("/requests/projects/{project_id}")
+async def delete_project(grant_id:int, user:Dict = Depends(auth.get_current_user)):
+    if not await auth.verify_role(user=user, allowed = ["scientist"]):
+        raise HTTPException(status_code=403, detail="Not enough rights")
+    return await projectsHandler.delete_project(grant_id)
+
+@app.get("/requests/projects/{project_id}")
+async def get_project(grant_id:int):
+   return await projectsHandler.get_project(grant_id)
+
+@app.get("/requests/projects/list")
+async def get_projects(skip:int=0, limit:int=10):
+    return await projectsHandler.get_projects(skip=skip, limit=limit)
 

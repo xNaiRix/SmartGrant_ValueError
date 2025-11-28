@@ -7,18 +7,18 @@ import os
 
 DATABASE_PATH = "test.db"
 
-def get_connection():
+async def get_connection():
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-def dict_factory(cursor, row):
+async def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
 
-def init_database():
+async def init_database():
     conn = get_connection()
     cursor = conn.cursor()
     try:
@@ -47,34 +47,39 @@ def init_database():
         pass
 
 
-def tableExists(tableName: str) -> bool:
+async def tableExists(tableName: str) -> bool:
     pass
 
-def getTable(tableName: str, begin: int = 0, end: int = None) -> List[Dict]:
+async def getTable(tableName: str, begin: int = 0, end: int = None) -> List[Dict]:
     pass
 
-def createTable(tableName: str, table: List[Dict], schemes: Dict[str, str]) -> bool:
+async def createTable(tableName: str, table: List[Dict], schemes: Dict[str, str]) -> bool:
     pass
 
-def deleteItem(tableName: str, id) -> bool:
+async def deleteItem(tableName: str, id) -> bool:
     pass
 
-def updateTable(tableName: str, table: List[Dict], schemes: Dict[str, str]) -> bool:
+async def updateTable(tableName: str, table: List[Dict], schemes: Dict[str, str]) -> bool:
     pass
 
 
 
-def getItem(tableName:str, id)->Optional[Dict]:#получать конкретную запись по PK -
+async def getItem(tableName:str, id)->Optional[Dict]:#получать конкретную запись по PK -
     # надо ещё отдельную функцию для получения списка подходящих значений (где не по PK)
+    if tableName == "Scientists":
+        return {"email": "testScientist@mail.com", "full_name":"TEEESTER TESTOROVICH", "password": "$2b$12$IqCqIEI7tQ3o43ptcQT67O8aH9kmsIKmyMhhsujRxZrn8jrt78N.a",
+                "info":"I'm the scientist in IT"}
+    if tableName == "Companies":
+        return {"email": "testCompany@mail.com", "name":"TEEEST COMPANY IT", "password": "$2b$12$IqCqIEI7tQ3o43ptcQT67O8aH9kmsIKmyMhhsujRxZrn8jrt78N.a",
+                "info":"It's IT company"}
+    return None
+async def createItem(tableName:str, item:BaseModel)->bool:
     pass
 
-def createItem(tableName:str, item:BaseModel)->bool:
+async def deleteItem(tableName: str, id) -> bool:
     pass
 
-def deleteItem(tableName: str, id) -> bool:
-    pass
-
-def updateItem(tableName: str, id, newValue: BaseModel) -> bool:
+async def updateItem(tableName: str, id, newValue: BaseModel) -> bool:
     pass
 
 
