@@ -64,7 +64,8 @@ def updateTable(tableName: str, table: List[Dict], schemes: Dict[str, str]) -> b
 
 
 
-def getItem(tableName:str, id)->Optional[Dict]:
+def getItem(tableName:str, id)->Optional[Dict]:#получать конкретную запись по PK -
+    # надо ещё отдельную функцию для получения списка подходящих значений (где не по PK)
     pass
 
 def createItem(tableName:str, item:BaseModel)->bool:

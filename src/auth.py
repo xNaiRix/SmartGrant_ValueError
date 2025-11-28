@@ -81,6 +81,7 @@ async def validate_password(passwd) -> bool:
 
 async def _reg(tableName:Literal["Scientists", "Companies"], user:UserCreate)->Dict:
     try:
+        print(user.role)
         user_in_db = getItem(tableName=tableName, id=user.data.email)
         if not user_in_db:
             if not await validate_password(passwd=user.data.password):
@@ -106,8 +107,8 @@ async def _reg(tableName:Literal["Scientists", "Companies"], user:UserCreate)->D
     
 async def reg(user: UserCreate) -> Dict:
     if user.role == "scientist":
-        return _reg(tableName="Scientists", email=user.email, password=user.password, data=user.data)
-    return _reg(tableName="Companies", email=user.email, password=user.password, data=user.data)
+        return await _reg(tableName="Scientists", user=user.data)
+    return await _reg(tableName="Companies", user=user.data)
 
 
 async def _login_user(tableName:Literal["Scientists", "Companies"],  user: LoginRequest) -> Dict:
@@ -134,5 +135,5 @@ async def _login_user(tableName:Literal["Scientists", "Companies"],  user: Login
     
 async def login_user(user: LoginRequest)->Dict:
     if user.role == "scientist":
-        return _login_user("Scientists", user)
-    return _login_user("Companies", user)
+        return await _login_user("Scientists", user)
+    return await _login_user("Companies", user)
