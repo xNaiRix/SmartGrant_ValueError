@@ -32,6 +32,8 @@ app.add_middleware(
 async def root():
     #print(auth.hash_password("123456789Aa"))
     logger.info("Root endpoint accessed")
+    for handler in logger.handlers:
+        handler.flush()
     return {"message": "SmartGrunt API is running", "version": "1.0.0", "docs": "/docs"}
 
 @app.get("/favicon.ico")
