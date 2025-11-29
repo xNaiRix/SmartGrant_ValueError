@@ -1,87 +1,148 @@
-import sqlite3
-from typing import Dict, List, Optional
-from pydantic import BaseModel
-from datetime import date, datetime
-import json
-import os
+import aiosqlite
+import asyncio
 
-DATABASE_PATH = "test.db"
+DATABASE_PATH = '../database.db'
 
 async def get_connection():
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    conn = await aiosqlite.connect(DATABASE_PATH)
+    await self.connection.execute("PRAGMA foreign_keys = ON")
+    return await conn
 
-async def dict_factory(cursor, row):
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
+PRIVATE_VISIBILITY = 0
+PUBLIC_VISIBILITY = 1
+
+REQUESTED_STATUS = 0
+OFFERED_STATUS = 1
+AGREED_STATUS = 2
+PAID_STATUS = 3
 
 async def init_database():
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = await get_connection()
+    await conn.execute('PRAGMA foreign_keys = ON')
     try:
-        #Scientists
-        cursor.execute(cursor.execute('''
-            CREATE TABLE IF NOT EXISTS Scientists (
-            email TEXT PRIMARY KEY,
-            password TEXT NOT NULL,
-            full_name TEXT NOT NULL,
-            info TEXT
-            )
-        '''))
-
         #Companies
-        cursor.execute(cursor.execute('''
+        await conn.execute('''
             CREATE TABLE IF NOT EXISTS Companies (
-            email TEXT PRIMARY KEY,
-            password TEXT NOT NULL,
-            name TEXT NOT NULL,
-            info TEXT
-            )
-        '''))
+                email TEXT PRIMARY KEY,
+                password_hash TEXT NOT NULL,
+                name TEXT NOT NULL,
+                info TEXT
+            )''')
 
-        #continues...
-    except:
-        pass
+        #GrantOffers
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS GrantOffers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_email TEXT NOT NULL,
+                amount REAL NOT NULL,
+                offers_number INTEGER NOT NULL,
+                visibility INTEGER CHECK (visibility >= 0 AND visibility <= 1),
+                FOREIGN KEY (company_email) REFERENCES Companies(email)
+            )''')
+        
+        #Scientists
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS Scientists (
+                email TEXT PRIMARY KEY,
+                password_hash TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                info TEXT
+            )''')
 
+        #Projects
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS Projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scientist_email TEXT NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                estimate_id INT,
+                FOREIGN KEY (scientist_email) REFERENCES Scientists(email),
+                FOREIGN KEY (estimate_id) REFERENCES Estimates(id)
+            )''')
 
-async def tableExists(tableName: str) -> bool:
-    pass
+        #Funds
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS Funds (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                grant_offer_id INTEGER NOT NULL,
+                status INTEGER CHECK (status >= 0 AND status <= 3),
+                FOREIGN KEY (project_id) REFERENCES Projects(id),
+                FOREIGN KEY (grant_offer_id) REFERENCES GrantOffers(id)
+            )''')
 
-async def getTable(tableName: str, begin: int = 0, end: int = None) -> List[Dict]:
-    pass
+        #Estimates
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS Estimates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                total_amount REAL CHECK (total_amount >= 0)
+            )''')
 
-async def createTable(tableName: str, table: List[Dict], schemes: Dict[str, str]) -> bool:
-    pass
+        #EstimateRecords
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS EstimateRecords (
+                estimate_id INTEGER NOT NULL,
+                price REAL CHECK (price >= 0),
+                count INTEGER CHECK (count > 0),
+                name TEXT NOT NULL,
+                category TEXT NOT NULL,
+                FOREIGN KEY (estimate_id) REFERENCES Estimates(id)
+            )''')
 
-async def deleteItem(tableName: str, id) -> bool:
-    pass
+        await conn.commit()
+        await conn.close()
+    except Exception as e:
+        raise e
 
-async def updateTable(tableName: str, table: List[Dict], schemes: Dict[str, str]) -> bool:
-    pass
+async def get_record(table_name, skip=0, limit=None, **parameters):
+    keys, values = list(zip(*parameters.items()))
+    request = f'SELECT * FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
+    if limit is not None:
+        request += f' LIMIT {limit} OFFSET {skip}'
+    if limit is not None:
+        request += f' LIMIT {limit}'
+    conn = await get_connection()
+    try:
+        await conn.execute(request, values)
+        row = await conn.fetchone()
+        if row is None:
+            return None
+        return dict(row)
+    except Exception as e:
+        raise e
 
+async def get_records(table_name, skip=0, limit=None, **parameters):
+    keys, values = list(zip(*parameters.items()))
+    request = f'SELECT * FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
+    if limit is not None:
+        request += f' LIMIT {limit} OFFSET {skip}'
+    conn = await get_connection()
+    try:
+        await conn.execute(request, values)
+        rows = await conn.fetchall()
+        return [dict(row) for row in rows]
+    except Exception as e:
+        raise e
 
+async def create_record(table_name, **parameters):
+    keys, values = list(zip(*parameters.items()))
+    request = f'INSERT INTO {table_name} ({", ".join(keys)}) VALUES ({", ".join("?" for value in values)})'
+    conn = await get_connection()
+    try:
+        await conn.execute(request, values)
+        await conn.commit()
+        await conn.close()
+    except Exception as e:
+        raise e
 
-async def getItem(tableName:str, id)->Optional[Dict]:#получать конкретную запись по PK -
-    # надо ещё отдельную функцию для получения списка подходящих значений (где не по PK)
-    if tableName == "Scientists":
-        return {"email": "testScientist@mail.com", "full_name":"TEEESTER TESTOROVICH", "password": "$2b$12$IqCqIEI7tQ3o43ptcQT67O8aH9kmsIKmyMhhsujRxZrn8jrt78N.a",
-                "info":"I'm the scientist in IT"}
-    if tableName == "Companies":
-        return {"email": "testCompany@mail.com", "name":"TEEEST COMPANY IT", "password": "$2b$12$IqCqIEI7tQ3o43ptcQT67O8aH9kmsIKmyMhhsujRxZrn8jrt78N.a",
-                "info":"It's IT company"}
-    return None
-async def createItem(tableName:str, item:BaseModel)->bool:
-    pass
-
-async def deleteItem(tableName: str, id) -> bool:
-    pass
-
-async def updateItem(tableName: str, id, newValue: BaseModel) -> bool:
-    pass
-
-
-# if __name__ == "__main__" or True:
-#     init_database()
+async def delete_records(table_name, **parameters):
+    keys, values = list(zip(*parameters.items()))
+    request = f'DELETE FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
+    conn = await get_connection()
+    try:
+        await conn.execute(request, values)
+        await conn.commit()
+        await conn.close()
+    except Exception as e:
+        raise e
