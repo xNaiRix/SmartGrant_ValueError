@@ -85,7 +85,8 @@ async def init_database():
                 estimate_id INTEGER NOT NULL,
                 price REAL CHECK (price >= 0),
                 count INTEGER CHECK (count > 0),
-                description TEXT NOT NULL,
+                name TEXT NOT NULL,
+                category TEXT NOT NULL,
                 FOREIGN KEY (estimate_id) REFERENCES Estimates(id)
             )''')
 
