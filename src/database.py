@@ -28,7 +28,7 @@ async def init_database():
         await conn.execute('''
             CREATE TABLE IF NOT EXISTS Companies (
                 email TEXT PRIMARY KEY,
-                password_hash TEXT NOT NULL,
+                password TEXT NOT NULL,
                 name TEXT NOT NULL,
                 info TEXT
             )''')
@@ -48,7 +48,7 @@ async def init_database():
         await conn.execute('''
             CREATE TABLE IF NOT EXISTS Scientists (
                 email TEXT PRIMARY KEY,
-                password_hash TEXT NOT NULL,
+                password TEXT NOT NULL,
                 full_name TEXT NOT NULL,
                 info TEXT
             )''')
@@ -145,5 +145,6 @@ async def delete_records(table_name, **parameters):
         await conn.execute(request, values)
         await conn.commit()
         await conn.close()
+        return True
     except Exception as e:
-        return
+        return False
