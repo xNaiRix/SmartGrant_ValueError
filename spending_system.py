@@ -1,13 +1,20 @@
 from SmartGrant_ValueError.contract import MyCoinContract
 from SmartGrant_ValueError.entities import PurchaseList, Object
+from dadata import Dadata
 
 
-def api_dadata_get_okved(tin: str) -> str:
+def api_dadata_get_okved(name: str, tin: str) -> str:
     """Simulates Step 2: Getting Category from TIN"""
     db = {
         "7700000000": "47.11",  # Food Retail
         "1234567890": "99.99",  # Forbidden Category
     }
+    if db.get(tin, None):
+        return db.get(tin, None)
+    token = "d1099608712ca12ab0a9d9ff398f7481a12a3c82"
+    dadata = Dadata(token)
+    result = dadata.find_by_id(name, tin)
+    db[tin] = result
     return db.get(tin, "00.00")
 
 
