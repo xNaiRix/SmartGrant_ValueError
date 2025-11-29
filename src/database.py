@@ -83,5 +83,5 @@ async def updateItem(tableName: str, id, newValue: BaseModel) -> bool:
     pass
 
 
-if __name__ == "__main__" or True:
-    init_database()
+# if __name__ == "__main__" or True:
+#     init_database()

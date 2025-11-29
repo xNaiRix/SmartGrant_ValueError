@@ -6,6 +6,7 @@ import logging
 import os
 from dotenv import load_dotenv
 
+
 if __name__ == "__main__":
     load_dotenv()
     API_PORT = int(os.getenv("API_PORT", "8000"))
