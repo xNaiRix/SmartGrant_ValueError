@@ -6,14 +6,14 @@ import uuid
 class CreateScientist(BaseModel):
     email: str
     password: str
-    full_name: Optional[str]
-    info:Optional[str]
+    name: Optional[str]
+    #info:Optional[str]
 
 class CreateCompany(BaseModel):
     email: str
     password: str
     name: Optional[str]
-    info: Optional[str]
+    #info: Optional[str]
 
 class UserCreate(BaseModel):
     role: Literal["scientist", "company"]

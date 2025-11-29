@@ -12,7 +12,6 @@ DATABASE_PATH = os.getenv("DATABASE_URL", str(BASE_DIR / "database.db"))
 
 async def get_connection():
     os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
-    print(f"Database will be created at: {DATABASE_PATH}")
     conn = await aiosqlite.connect(DATABASE_PATH)
     await conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -30,6 +29,7 @@ async def init_database():
     global _db_initialized
     if _db_initialized:
         return
+    print(f"Database will be created at: {DATABASE_PATH}")
     conn = await get_connection()
     await conn.execute('PRAGMA foreign_keys = ON')
     try:
@@ -58,7 +58,7 @@ async def init_database():
             CREATE TABLE IF NOT EXISTS Scientists (
                 email TEXT PRIMARY KEY,
                 password TEXT NOT NULL,
-                full_name TEXT NOT NULL,
+                name TEXT NOT NULL,
                 info TEXT
             )''')
 

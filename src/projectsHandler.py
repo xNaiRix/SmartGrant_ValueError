@@ -3,6 +3,7 @@ from schemes import CreateProjectRequest
 
 async def create_project(scientist_email:str, project:CreateProjectRequest):
     #createItem(tableName="Projects", item={})#нужно до конца понимать, как взаимодействие с бд происходит
+    #create_record(table_name="Projects", **project.dict())
     return {"status":"success", "id":1314, "message":"your project were created"}
 
 async def delete_project(project_id:int):
