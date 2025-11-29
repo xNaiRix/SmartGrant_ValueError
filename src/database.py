@@ -5,8 +5,8 @@ DATABASE_PATH = '../database.db'
 
 async def get_connection():
     conn = await aiosqlite.connect(DATABASE_PATH)
-    await self.connection.execute("PRAGMA foreign_keys = ON")
-    return await conn
+    await conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 PRIVATE_VISIBILITY = 0
 PUBLIC_VISIBILITY = 1
@@ -95,13 +95,9 @@ async def init_database():
     except Exception as e:
         raise e
 
-async def get_record(table_name, skip=0, limit=None, **parameters):
+async def get_record(table_name, **parameters):
     keys, values = list(zip(*parameters.items()))
     request = f'SELECT * FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
-    if limit is not None:
-        request += f' LIMIT {limit} OFFSET {skip}'
-    if limit is not None:
-        request += f' LIMIT {limit}'
     conn = await get_connection()
     try:
         await conn.execute(request, values)
@@ -112,7 +108,7 @@ async def get_record(table_name, skip=0, limit=None, **parameters):
     except Exception as e:
         raise e
 
-async def get_records(table_name, skip=0, limit=None, **parameters):
+async def get_records(table_name, skip=None, limit=None, **parameters):
     keys, values = list(zip(*parameters.items()))
     request = f'SELECT * FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
     if limit is not None:
@@ -133,8 +129,9 @@ async def create_record(table_name, **parameters):
         await conn.execute(request, values)
         await conn.commit()
         await conn.close()
+        return True
     except Exception as e:
-        raise e
+        raise False
 
 async def delete_records(table_name, **parameters):
     keys, values = list(zip(*parameters.items()))
