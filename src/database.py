@@ -1,12 +1,16 @@
 import aiosqlite
 import asyncio
+import os
+from dotenv import load_dotenv
+from typing import List, Optional, Dict
 
-DATABASE_PATH = '../database.db'
+load_dotenv()
+DATABASE_PATH =os.getenv("DATABASE_URL", "../database.db") 
 
 async def get_connection():
     conn = await aiosqlite.connect(DATABASE_PATH)
-    await self.connection.execute("PRAGMA foreign_keys = ON")
-    return await conn
+    await conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 PRIVATE_VISIBILITY = 0
 PUBLIC_VISIBILITY = 1
@@ -95,13 +99,9 @@ async def init_database():
     except Exception as e:
         raise e
 
-async def get_record(table_name, skip=0, limit=None, **parameters):
+async def get_record(table_name, **parameters)->Optional[Dict]:#Либо запись одна либо нет (подразумевается что это верно всегда для этой таблицы)
     keys, values = list(zip(*parameters.items()))
     request = f'SELECT * FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
-    if limit is not None:
-        request += f' LIMIT {limit} OFFSET {skip}'
-    if limit is not None:
-        request += f' LIMIT {limit}'
     conn = await get_connection()
     try:
         await conn.execute(request, values)
@@ -125,7 +125,7 @@ async def get_records(table_name, skip=0, limit=None, **parameters):
     except Exception as e:
         raise e
 
-async def create_record(table_name, **parameters):
+async def create_record(table_name, **parameters)->bool:
     keys, values = list(zip(*parameters.items()))
     request = f'INSERT INTO {table_name} ({", ".join(keys)}) VALUES ({", ".join("?" for value in values)})'
     conn = await get_connection()
@@ -133,8 +133,11 @@ async def create_record(table_name, **parameters):
         await conn.execute(request, values)
         await conn.commit()
         await conn.close()
+        return True
+    
     except Exception as e:
-        raise e
+        print(e)
+        return False
 
 async def delete_records(table_name, **parameters):
     keys, values = list(zip(*parameters.items()))
@@ -146,3 +149,5 @@ async def delete_records(table_name, **parameters):
         await conn.close()
     except Exception as e:
         raise e
+
+init_database()

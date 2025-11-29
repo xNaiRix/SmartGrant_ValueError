@@ -7,7 +7,7 @@ import jwt
 from passlib.context import CryptContext
 
 from schemes import UserCreate, CreateCompany, CreateScientist, LoginRequest, UserProfileRequest
-from database import getItem, createItem
+from database import get_record, create_record
 
 SECRET_KEY = None
 ALGORITHM = None  
@@ -88,7 +88,7 @@ async def validate_password(passwd) -> bool:
 async def _reg(tableName:Literal["Scientists", "Companies"], user:UserCreate)->Dict:
     try:
         #print(user.role)
-        user_in_db = await getItem(tableName=tableName, id=user.data.email)
+        user_in_db = await get_record(tableName=tableName, email=user.data.email)
         if not user_in_db:
             if not await validate_password(passwd=user.data.password):
                 return {
@@ -98,7 +98,7 @@ async def _reg(tableName:Literal["Scientists", "Companies"], user:UserCreate)->D
             
             hashed_password = hash_password(user.data.password)
             user.data.password = hashed_password
-            if not (await createItem(tableName="Scientists", item=user.data)):
+            if not (await create_record(tableName="Scientists", item=user.data)):
                 return {"status": "failed", "message": "DB Error"}
             return {"status": "success", "message": "Registration was successful"}
         return {
