@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* Konfigurasi Tema di v4 bisa dilakukan lewat CSS variables atau @theme block */
+@theme {
+  /* 
+     Kita menimpa variabel --font-sans default.
+     Meskipun Merriweather adalah Serif, kita taruh di sini 
+     agar otomatis terpakai di seluruh website tanpa mengubah kodingan lain.
+  */
+  --font-sans: "Merriweather", serif;
+
+  /* Warna-warna tema (tetap sama seperti sebelumnya) */
+  --color-slate-950: #020617;
+  --color-slate-900: #0f172a;
+  --color-slate-800: #1e293b;
+  --color-slate-50: #f8fafc;
+  --color-blue-600: #2563eb;
+  --color-violet-600: #7c3aed;
+}
+
+:root {
+  /* Pastikan variabel ini merujuk ke font yang baru diset diatas */
+  font-family: var(--font-sans);
+  line-height: 1.6; /* Merriweather biasanya butuh spasi baris lebih lega */
+}
+
+/* Global Styles */
+body {
+  /* Mengakses utility class secara native */
+  background-color: var(--color-slate-950);
+  color: var(--color-slate-50);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar (Opsional, biar makin keren nuansa cybernya) */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-slate-950);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-slate-800);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-blue-600);
+}
