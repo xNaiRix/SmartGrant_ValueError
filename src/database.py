@@ -1,7 +1,11 @@
 import aiosqlite
 import asyncio
+import os
+from dotenv import load_dotenv
+from typing import List, Optional, Dict
 
-DATABASE_PATH = '../database.db'
+load_dotenv()
+DATABASE_PATH = os.getenv("DATABASE_URL", "../database.db")
 
 async def get_connection():
     conn = await aiosqlite.connect(DATABASE_PATH)
@@ -98,34 +102,34 @@ async def init_database():
 async def get_record(table_name, **parameters):
     keys, values = list(zip(*parameters.items()))
     request = f'SELECT * FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
-    conn = await get_connection()
     try:
+        conn = await get_connection()
         await conn.execute(request, values)
         row = await conn.fetchone()
         if row is None:
             return None
         return dict(row)
     except Exception as e:
-        raise e
+        return
 
 async def get_records(table_name, skip=None, limit=None, **parameters):
     keys, values = list(zip(*parameters.items()))
     request = f'SELECT * FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
     if limit is not None:
         request += f' LIMIT {limit} OFFSET {skip}'
-    conn = await get_connection()
     try:
+        conn = await get_connection()
         await conn.execute(request, values)
         rows = await conn.fetchall()
         return [dict(row) for row in rows]
     except Exception as e:
-        raise e
+        return
 
 async def create_record(table_name, **parameters):
     keys, values = list(zip(*parameters.items()))
     request = f'INSERT INTO {table_name} ({", ".join(keys)}) VALUES ({", ".join("?" for value in values)})'
-    conn = await get_connection()
     try:
+        conn = await get_connection()
         await conn.execute(request, values)
         await conn.commit()
         await conn.close()
@@ -136,10 +140,10 @@ async def create_record(table_name, **parameters):
 async def delete_records(table_name, **parameters):
     keys, values = list(zip(*parameters.items()))
     request = f'DELETE FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
-    conn = await get_connection()
     try:
+        conn = await get_connection()
         await conn.execute(request, values)
         await conn.commit()
         await conn.close()
     except Exception as e:
-        raise e
+        return
