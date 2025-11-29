@@ -1,7 +1,8 @@
 from fastapi import Depends, HTTPException, Header
 from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Dict
-import jwt  # PyJWT
+import os
+import jwt
 
 from passlib.context import CryptContext
 
@@ -122,7 +123,7 @@ async def _login_user(tableName:Literal["Scientists", "Companies"],  user: Login
     print(f"Login attempt for user: {user.email}")
     print(f"User found in DB: {user_in_db is not None}")
     if not user_in_db:
-        return {"status": "failed", "message": "Unknown username", "token": None}
+        return {"status": "failed", "message": "Unknown email", "token": None}
     print(f"Stored password hash: {user_in_db['password'][:50]}...")
     isCorrect = await verify_password(password=user.password, hashed_password=user_in_db["password"])
     print(f"Password verification result: {isCorrect}")
@@ -156,3 +157,19 @@ async def get_current_user_profile(user: Dict):
     except Exception as e:
         return {"status":"failed", "message":"Internal problem"}
     
+
+if __name__ == "__main__" or True:
+    SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key_change_me")
+    ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+
+    print(f"API module loading - Setting auth config:")
+    print(f"  SECRET_KEY: {'[SET]' if SECRET_KEY else '[NOT SET]'}")
+    print(f"  ACCESS_TOKEN_EXPIRE_MINUTES: {ACCESS_TOKEN_EXPIRE_MINUTES}")
+    print(f"  ALGORITHM: {ALGORITHM}")
+
+    setValues(
+        secret_key=SECRET_KEY,
+        algorithm=ALGORITHM,
+        access_token_expire_minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+    )

@@ -1,8 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi import Depends, Query, Path, HTTPException, status, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 
 from typing import Dict
+import time
 import os
 from dotenv import load_dotenv
 
@@ -11,24 +12,12 @@ load_dotenv()
 import auth
 import projectsHandler
 import grantOffersHandler
-
-SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key_change_me")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-
-print(f"API module loading - Setting auth config:")
-print(f"  SECRET_KEY: {'[SET]' if SECRET_KEY else '[NOT SET]'}")
-print(f"  ACCESS_TOKEN_EXPIRE_MINUTES: {ACCESS_TOKEN_EXPIRE_MINUTES}")
-print(f"  ALGORITHM: {ALGORITHM}")
-
-auth.setValues(
-    secret_key=SECRET_KEY,
-    algorithm=ALGORITHM,
-    access_token_expire_minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-)
+import fundsHandler
+from logger import logger
 
 from database import deleteItem, updateItem, getTable
-from schemes import LoginRequest, UserCreate, CreateProjectRequest
+from schemes import LoginRequest, UserCreate, CreateProjectRequest, CreateFundRequest
+
 
 app = FastAPI(title="SmartGrunt API", version="1.0.0")
 
@@ -42,10 +31,17 @@ app.add_middleware(
 @app.get("/")
 async def root():
     #print(auth.hash_password("123456789Aa"))
+    logger.info("Root endpoint accessed")
     return {"message": "SmartGrunt API is running", "version": "1.0.0", "docs": "/docs"}
+
+@app.get("/favicon.ico")
+async def favicon():
+    logger.debug("Favicon.ico requested - returning 204 No Content")
+    return Response(status_code=204)
 
 @app.options("/{path:path}")
 async def options_handler(path: str):
+    logger.debug("OPTIONS request", extra={'extra_data': {'path': path}})
     return {"message": "OK"}
 
 
@@ -53,14 +49,38 @@ async def options_handler(path: str):
 @app.post("/auth/login")
 async def login(login_data: LoginRequest):
     try:
+        logger.info("Login attempt", extra={
+            'extra_data': {
+                'email': login_data.email,
+                'role': login_data.role
+            }
+        })
         logs = await auth.login_user(login_data)
+        if logs.get('status') == 'success':
+            logger.info("Login successful", extra={
+                'extra_data': {'email': login_data.email}
+            })
+        else:
+            logger.warning("Login failed", extra={
+                'extra_data': {
+                    'email': login_data.email,
+                    'reason': logs.get('message')
+                }
+            })
+            
         return logs
     except Exception as e:
         print(f"Login error: {e}")
+        logger.error("Login error", extra={
+            'extra_data': {
+                'email': login_data.email,
+                'error': str(e)
+            }})
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
 @app.get("/auth/me")
 async def get_current_user_info(user: Dict = Depends(auth.get_current_user)):
+    logger.info("")
     return user
 
 @app.post("/auth")
@@ -120,3 +140,9 @@ async def get_project(grant_id:int):
 async def get_projects(skip:int=0, limit:int=10):
     return await projectsHandler.get_projects(skip=skip, limit=limit)
 
+
+###########################funds
+@app.post("/request/funds")
+async def create_fund(project:CreateFundRequest, user:Dict = Depends(auth.get_current_user)):
+    pass
+    

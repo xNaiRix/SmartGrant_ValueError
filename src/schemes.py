@@ -24,8 +24,9 @@ class LoginRequest(BaseModel):
 class UserProfileRequest(BaseModel):
     email:str
     role:Literal["scientist", "company"]
-#############
 
+
+#############
 
 class CreateGrantRequest(BaseModel):
     company_email:str
@@ -37,6 +38,11 @@ class CreateGrantRequest(BaseModel):
 #########
 
 class CreateProjectRequest(BaseModel):
-    scientist_email:str
     name:str
     description:str
+    estimate:List[Dict]
+    total_fund:int
+
+class CreateFundRequest(BaseModel):
+    grant_offer_id:int
+    project_id:int
