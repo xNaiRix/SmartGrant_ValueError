@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from typing import List, Optional, Dict
 
 load_dotenv()
-DATABASE_PATH =os.getenv("DATABASE_URL", "../database.db") 
+DATABASE_PATH = os.getenv("DATABASE_URL", "../database.db")
 
 async def get_connection():
     conn = await aiosqlite.connect(DATABASE_PATH)
@@ -99,55 +99,51 @@ async def init_database():
     except Exception as e:
         raise e
 
-async def get_record(table_name, **parameters)->Optional[Dict]:#Либо запись одна либо нет (подразумевается что это верно всегда для этой таблицы)
+async def get_record(table_name, **parameters):
     keys, values = list(zip(*parameters.items()))
     request = f'SELECT * FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
-    conn = await get_connection()
     try:
+        conn = await get_connection()
         await conn.execute(request, values)
         row = await conn.fetchone()
         if row is None:
             return None
         return dict(row)
     except Exception as e:
-        raise e
+        return
 
-async def get_records(table_name, skip=0, limit=None, **parameters):
+async def get_records(table_name, skip=None, limit=None, **parameters):
     keys, values = list(zip(*parameters.items()))
     request = f'SELECT * FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
     if limit is not None:
         request += f' LIMIT {limit} OFFSET {skip}'
-    conn = await get_connection()
     try:
+        conn = await get_connection()
         await conn.execute(request, values)
         rows = await conn.fetchall()
         return [dict(row) for row in rows]
     except Exception as e:
-        raise e
+        return
 
-async def create_record(table_name, **parameters)->bool:
+async def create_record(table_name, **parameters):
     keys, values = list(zip(*parameters.items()))
     request = f'INSERT INTO {table_name} ({", ".join(keys)}) VALUES ({", ".join("?" for value in values)})'
-    conn = await get_connection()
     try:
+        conn = await get_connection()
         await conn.execute(request, values)
         await conn.commit()
         await conn.close()
         return True
-    
     except Exception as e:
-        print(e)
-        return False
+        raise False
 
 async def delete_records(table_name, **parameters):
     keys, values = list(zip(*parameters.items()))
     request = f'DELETE FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
-    conn = await get_connection()
     try:
+        conn = await get_connection()
         await conn.execute(request, values)
         await conn.commit()
         await conn.close()
     except Exception as e:
-        raise e
-
-init_database()
+        return
