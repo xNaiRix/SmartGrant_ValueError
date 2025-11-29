@@ -1,4 +1,4 @@
-from database import createItem, getItem, deleteItem,updateItem
+from database import create_record, get_record, get_records, delete_records
 from schemes import CreateFundRequest
 
 async def create_fund(project_id:int, grant_offer_id:int):

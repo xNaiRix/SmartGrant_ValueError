@@ -3,11 +3,16 @@ import asyncio
 import os
 from dotenv import load_dotenv
 from typing import List, Optional, Dict
+from pathlib import Path
 
 load_dotenv()
-DATABASE_PATH = os.getenv("DATABASE_URL", "../database.db")
+BASE_DIR = Path(__file__).parent
+DATABASE_PATH = os.getenv("DATABASE_URL", str(BASE_DIR / "database.db"))
+
 
 async def get_connection():
+    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+    print(f"Database will be created at: {DATABASE_PATH}")
     conn = await aiosqlite.connect(DATABASE_PATH)
     await conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -19,8 +24,12 @@ REQUESTED_STATUS = 0
 OFFERED_STATUS = 1
 AGREED_STATUS = 2
 PAID_STATUS = 3
+_db_initialized = False
 
 async def init_database():
+    global _db_initialized
+    if _db_initialized:
+        return
     conn = await get_connection()
     await conn.execute('PRAGMA foreign_keys = ON')
     try:
@@ -28,7 +37,7 @@ async def init_database():
         await conn.execute('''
             CREATE TABLE IF NOT EXISTS Companies (
                 email TEXT PRIMARY KEY,
-                password_hash TEXT NOT NULL,
+                password TEXT NOT NULL,
                 name TEXT NOT NULL,
                 info TEXT
             )''')
@@ -48,7 +57,7 @@ async def init_database():
         await conn.execute('''
             CREATE TABLE IF NOT EXISTS Scientists (
                 email TEXT PRIMARY KEY,
-                password_hash TEXT NOT NULL,
+                password TEXT NOT NULL,
                 full_name TEXT NOT NULL,
                 info TEXT
             )''')
@@ -96,6 +105,7 @@ async def init_database():
 
         await conn.commit()
         await conn.close()
+        _db_initialized = True
     except Exception as e:
         raise e
 
@@ -104,13 +114,20 @@ async def get_record(table_name, **parameters):
     request = f'SELECT * FROM {table_name} WHERE ' + ' AND '.join(f'{key} = ?' for key in keys)
     try:
         conn = await get_connection()
-        await conn.execute(request, values)
-        row = await conn.fetchone()
+        cursor = await conn.execute(request, values)
+        row = await cursor.fetchone()
+        await cursor.close()
         if row is None:
             return None
-        return dict(row)
+        columns = [description[0] for description in cursor.description]
+        return dict(zip(columns, row))
+        #return dict(row)
     except Exception as e:
-        return
+        print(f"Error in get_record: {e}")
+        return None
+    finally:
+        if conn:
+            await conn.close()
 
 async def get_records(table_name, skip=None, limit=None, **parameters):
     keys, values = list(zip(*parameters.items()))
@@ -145,5 +162,6 @@ async def delete_records(table_name, **parameters):
         await conn.execute(request, values)
         await conn.commit()
         await conn.close()
+        return True
     except Exception as e:
-        return
+        return False

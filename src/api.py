@@ -10,12 +10,26 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import auth
+SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key_change_me")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+
+print(f"API module loading - Setting auth config:")
+print(f"  SECRET_KEY: {'[SET]' if SECRET_KEY else '[NOT SET]'}")
+print(f"  ACCESS_TOKEN_EXPIRE_MINUTES: {ACCESS_TOKEN_EXPIRE_MINUTES}")
+print(f"  ALGORITHM: {ALGORITHM}")
+
+auth.setValues(
+    secret_key=SECRET_KEY,
+    algorithm=ALGORITHM,
+    access_token_expire_minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+)
+
 import projectsHandler
 import grantOffersHandler
 import fundsHandler
 from logger import logger
 
-from database import deleteItem, updateItem, getTable
 from schemes import LoginRequest, UserCreate, CreateProjectRequest, CreateFundRequest
 
 
@@ -32,8 +46,6 @@ app.add_middleware(
 async def root():
     #print(auth.hash_password("123456789Aa"))
     logger.info("Root endpoint accessed")
-    for handler in logger.handlers:
-        handler.flush()
     return {"message": "SmartGrunt API is running", "version": "1.0.0", "docs": "/docs"}
 
 @app.get("/favicon.ico")
@@ -82,12 +94,20 @@ async def login(login_data: LoginRequest):
 
 @app.get("/auth/me")
 async def get_current_user_info(user: Dict = Depends(auth.get_current_user)):
-    logger.info("")
+    logger.info("Get /me info", extra={
+        'extra_data': {'user_email': user.get("email")}
+    })
     return user
 
 @app.post("/auth")
 async def create_user(user_data: UserCreate):
     try:
+        logger.info("Registr attempt", extra={
+            'extra_data': {
+                'email': user_data.data.email,
+                'role': user_data.role
+            }
+        })
         logs = await auth.reg(user=user_data)
         return logs
     except Exception as e:
@@ -96,55 +116,122 @@ async def create_user(user_data: UserCreate):
     
 @app.get("/auth/profile")
 async def get_current_user_profile(user:Dict = Depends(auth.get_current_user)):
+    logger.info("Get user profile", extra={
+        'extra_data': {'user_email': user.get("email")}
+    })
     return await auth.get_current_user_profile(user)
 
 
 ##########################grantOffers
 @app.post("/requests/grants/")
-async def create_grant(grant_offer:CreateProjectRequest, user:Dict = Depends(auth.get_current_user)):
-    if not await auth.verify_role(user=user, allowed = ["company"]):
+async def create_grant(grant_offer: CreateProjectRequest, user: Dict = Depends(auth.get_current_user)):
+    logger.info("Create grant offer", extra={
+        'extra_data': {'user_email': user.get('email')}
+    })
+    
+    if not await auth.verify_role(user=user, allowed=["company"]):
+        logger.warning("Permission denied for grant creation", extra={
+            'extra_data': {
+                'user_email': user.get('email'),
+                'required_role': 'company'
+            }
+        })
         raise HTTPException(status_code=403, detail="Not enough rights")
+    
     return await grantOffersHandler.create_grant_offer(company_email=user["email"])
 
 @app.delete("/requests/grants/{grant_id}")
-async def delete_grant(grant_id:int, user:Dict = Depends(auth.get_current_user)):
-    if not await auth.verify_role(user=user, allowed = ["company"]):
+async def delete_grant(grant_id: int, user: Dict = Depends(auth.get_current_user)):
+    logger.info("Delete grant offer", extra={
+        'extra_data': {
+            'user_email': user.get('email'),
+            'grant_id': grant_id
+        }
+    })
+    if not await auth.verify_role(user=user, allowed=["company"]):
+        logger.warning("Permission denied for grant deletion", extra={
+            'extra_data': {
+                'user_email': user.get('email'),
+                'grant_id': grant_id,
+                'required_role': 'company'
+            }
+        })
         raise HTTPException(status_code=403, detail="Not enough rights")
+    
     return await grantOffersHandler.delete_grant_offer(grant_offer_id=grant_id)
 
 @app.get("/requests/grants/{grant_id}")
 async def get_grant(grant_id:int):
+    logger.info("Get grant offer", extra={
+        'extra_data': {'grant_id': grant_id}
+    })
     return await grantOffersHandler.get_grant_offer(grant_offer_id=grant_id)
 
 @app.get("/requests/grants/list")
 async def get_grants(skip:int=0, limit:int=10):
+    logger.info("Get grants list", extra={
+        'extra_data': {'skip': skip, 'limit': limit}
+    })
     return await grantOffersHandler.get_grant_offer(skip=skip, limit=limit)
 
 
 ###########################projects
 @app.post("/requests/projects/")
-async def create_project(project:CreateProjectRequest, user:Dict = Depends(auth.get_current_user)):
-    if not await auth.verify_role(user=user, allowed = ["scientist"]):
+async def create_project(project: CreateProjectRequest, user: Dict = Depends(auth.get_current_user)):
+    logger.info("Create project", extra={
+        'extra_data': {'user_email': user.get('email')}
+    })
+    
+    if not await auth.verify_role(user=user, allowed=["scientist"]):
+        logger.warning("Permission denied for project creation", extra={
+            'extra_data': {
+                'user_email': user.get('email'),
+                'required_role': 'scientist'
+            }
+        })
         raise HTTPException(status_code=403, detail="Not enough rights")
+    
     return await projectsHandler.create_project(scientist_email=user["email"], project=project)
 
 @app.delete("/requests/projects/{project_id}")
-async def delete_project(grant_id:int, user:Dict = Depends(auth.get_current_user)):
-    if not await auth.verify_role(user=user, allowed = ["scientist"]):
+async def delete_project(project_id: int, user: Dict = Depends(auth.get_current_user)):
+    logger.info("Delete project", extra={
+        'extra_data': {
+            'user_email': user.get('email'),
+            'project_id': project_id
+        }
+    })
+    
+    if not await auth.verify_role(user=user, allowed=["scientist"]):
+        logger.warning("Permission denied for project deletion", extra={
+            'extra_data': {
+                'user_email': user.get('email'),
+                'project_id': project_id,
+                'required_role': 'scientist'
+            }
+        })
         raise HTTPException(status_code=403, detail="Not enough rights")
-    return await projectsHandler.delete_project(grant_id)
+    
+    return await projectsHandler.delete_project(project_id)
 
 @app.get("/requests/projects/{project_id}")
-async def get_project(grant_id:int):
-   return await projectsHandler.get_project(grant_id)
+async def get_project(project_id: int):
+    logger.info("Get project", extra={
+        'extra_data': {'project_id': project_id}
+    })
+    return await projectsHandler.get_project(project_id)
 
 @app.get("/requests/projects/list")
-async def get_projects(skip:int=0, limit:int=10):
+async def get_projects(skip: int = 0, limit: int = 10):
+    logger.info("Get projects list", extra={
+        'extra_data': {'skip': skip, 'limit': limit}
+    })
     return await projectsHandler.get_projects(skip=skip, limit=limit)
 
-
-###########################funds
+########################### funds
 @app.post("/request/funds")
-async def create_fund(project:CreateFundRequest, user:Dict = Depends(auth.get_current_user)):
+async def create_fund(fund_request: CreateFundRequest, user: Dict = Depends(auth.get_current_user)):
+    logger.info("Create fund request", extra={
+        'extra_data': {'user_email': user.get('email')}
+    })
     pass
-    

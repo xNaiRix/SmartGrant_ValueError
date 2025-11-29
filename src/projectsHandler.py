@@ -1,4 +1,4 @@
-from database import createItem, getItem, deleteItem,updateItem
+from database import create_record, get_record, get_records, delete_records
 from schemes import CreateProjectRequest
 
 async def create_project(scientist_email:str, project:CreateProjectRequest):

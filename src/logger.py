@@ -25,7 +25,7 @@ class JSONFormatter(logging.Formatter):
 
 
 def setup_logger():
-    log_dir = Path("../logs")
+    log_dir = Path("./logs")
     log_dir.mkdir(exist_ok=True)
     
     logger = logging.getLogger("smartgrant")
